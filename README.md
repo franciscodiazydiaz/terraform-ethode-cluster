@@ -10,8 +10,9 @@ Terraform code to deploy a Flashbots' Ethereum Node Cluster on
 
 ## Requirements
 
-* [Terraform 1.3.x]()
+* [Terraform 1.3.x](https://developer.hashicorp.com/terraform/downloads)
 * [tfenv](https://github.com/kamatama41/tfenv) (Optional, Terraform version manager)
+* [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html)
 
 ## Getting Started
 
@@ -34,7 +35,8 @@ Create the infrastructure on AWS
 terraform apply -var eth_node_jwtsecret=$JWTSECRET
 ```
 
-Note: It is not recommended to store the tfstate file locally. You can keep it safely either using a module like [terraform-aws-tfstate-backend](https://github.com/cloudposse/terraform-aws-tfstate-backend) or [Terraform Cloud](https://cloud.hashicorp.com/products/terraform)
+Note: It is not recommended to store the tfstate file locally. You can keep it safely
+either using a module like [terraform-aws-tfstate-backend](https://github.com/cloudposse/terraform-aws-tfstate-backend) or [Terraform Cloud](https://cloud.hashicorp.com/products/terraform)
 
 Once Terraform is executed for the first time:
 
@@ -52,3 +54,10 @@ The following policies must be attached to the IAM Role or User that executes Te
 * IAMFullAccess
 * AmazonVPCFullAccess
 * AmazonS3FullAccess
+
+## EC2 instance session and logs
+
+To login to an EC2 instance [AWS Systems Manager Session Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html) is in place, and either the web console or the awscli command can be used to access it.
+
+[Fluent-bit](https://docs.fluentbit.io/manual/) is used to ship logs to CloudWatch inside
+the log group `fluent-bit-cloudwatch`. Each service has its own log stream `from-fluent-bit-*`.
