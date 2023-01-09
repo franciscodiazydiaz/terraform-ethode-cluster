@@ -45,7 +45,8 @@ ExecStart=/usr/local/bin/beacon-chain \\
     --prater \\
     --genesis-state=$DATADIR/genesis.ssz \\
     --jwt-secret=$DATADIR/jwtsecret \\
-    --log-format=json
+    --log-format=json \\
+    --monitoring-host=0.0.0.0
 
 [Install]
 WantedBy=multi-user.target

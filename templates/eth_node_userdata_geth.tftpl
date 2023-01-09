@@ -44,6 +44,7 @@ ExecStart=/usr/local/bin/geth \\
     --authrpc.jwtsecret=$DATADIR/jwtsecret \\
     --datadir=$DATADIR \\
     --metrics \\
+    --metrics.addr=0.0.0.0 \\
     --log.json \\
     --syncmode=full \\
     --verbosity=3
