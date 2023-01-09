@@ -1,0 +1,57 @@
+#!/bin/bash
+#
+# User Data to install Geth
+#
+set -e
+set -u
+set -o pipefail
+
+DATADIR=${data_mount_path}/execution
+GETH_ARTIFACT=geth-${geth_version}-$(uname -m).tar.gz
+
+useradd --no-create-home --shell /bin/false -u 1100 geth
+mkdir -p $DATADIR
+
+echo ${jwtsecret} > $DATADIR/jwtsecret
+chown -R geth:geth $DATADIR
+
+aws s3 cp s3://${s3_artifacts}/$GETH_ARTIFACT .
+tar -zxvf $GETH_ARTIFACT
+mv geth /usr/local/bin
+
+
+cat << EOF > /etc/systemd/system/geth.service
+[Unit]
+Description=Flashbots Go Ethereum Client - Geth (Goerli)
+After=network.target
+Wants=network.target
+
+[Service]
+User=geth
+Group=geth
+Type=simple
+Restart=always
+RestartSec=5
+TimeoutStopSec=180
+ExecStart=/usr/local/bin/geth \\
+    --goerli \\
+    --http \\
+    --http.api=engine,eth,web3,net,debug \\
+    --http.addr=0.0.0.0 \\
+    --http.vhosts=* \\
+    --authrpc.vhosts=* \\
+    --authrpc.addr=0.0.0.0 \\
+    --authrpc.jwtsecret=$DATADIR/jwtsecret \\
+    --datadir=$DATADIR \\
+    --metrics \\
+    --log.json \\
+    --syncmode=full \\
+    --verbosity=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable geth
+systemctl start geth

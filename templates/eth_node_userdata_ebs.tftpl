@@ -1,0 +1,40 @@
+#!/bin/bash
+#
+# User Data to mount an EBS volume
+#
+set -e
+set -u
+set -o pipefail
+
+apt-get update && apt-get install amazon-ec2-utils
+
+mkdir -p ${data_mount_path}
+
+# NVMe devices won't match the `data_device_name`
+EBS_VOL_TYPE=$(file -Ls "${data_device_name}" | awk '{ print $2 }')
+if [[ $EBS_VOL_TYPE == "data" ]]; then
+  DEVICE_NAME="${data_device_name}"
+else
+  ORIGINAL_DEVICE_NAME=$(echo "${data_device_name}" | cut -d '/' -f3)
+  DEVICES=$(lsblk | grep disk | egrep -v "sd[a-e]|nvme0n1" | awk '{ print $1 }')
+  for device in $DEVICES; do
+    MATCH=$(ebsnvme-id /dev/$device | grep -c $ORIGINAL_DEVICE_NAME)
+    if [[ $MATCH -eq 1 ]]; then
+      DEVICE_NAME=/dev/$device
+      break
+    fi
+  done
+fi
+
+# Creates the filesystem for the EBS volume
+EBS_VOL_FS=$(file -Ls "$DEVICE_NAME" | awk '{ print $5 }')
+if [[ ! "$EBS_VOL_FS" == "ext4" ]]; then
+  mkfs.ext4 $DEVICE_NAME
+fi
+
+# Mounts the EBS volume
+UUID=$(blkid | grep $DEVICE_NAME | cut -d " " -f2 | tr -d '"')
+echo "$UUID  ${data_mount_path}  ext4  defaults,nofail  0  2" >> /etc/fstab
+mount -a
+
+lsblk

@@ -1,0 +1,45 @@
+#!/bin/bash
+#
+# User Data to install Fluent-bit
+#
+set -e
+set -u
+set -o pipefail
+
+curl https://raw.githubusercontent.com/fluent/fluent-bit/master/install.sh | sh
+
+cat << EOF > /etc/fluent-bit/fluent-bit.conf
+[SERVICE]
+    flush        1
+    daemon       Off
+    log_level    info
+    parsers_file parsers.conf
+    plugins_file plugins.conf
+
+[INPUT]
+    Name            systemd
+    Tag             host.*
+    Systemd_Filter  _SYSTEMD_UNIT=geth.service
+    Systemd_Filter  _SYSTEMD_UNIT=beacon-chain.service
+
+[FILTER]
+    Name aws
+    Match *
+    imds_version v2
+    az true
+    ec2_instance_id true
+    ec2_instance_type true
+    private_ip true
+    ami_id true
+
+[OUTPUT]
+    Name cloudwatch_logs
+    Match   *
+    region ${aws_region}
+    log_group_name fluent-bit-cloudwatch
+    log_stream_prefix from-fluent-bit-
+    auto_create_group On
+EOF
+
+systemctl enable fluent-bit
+systemctl start fluent-bit

@@ -1,0 +1,56 @@
+#!/bin/bash
+#
+# User Data to install Prysm
+#
+set -e
+set -u
+set -o pipefail
+
+DATADIR=${data_mount_path}/consensus
+PRYSM_ARTIFACT=prysm-${prysm_version}-$(uname -m).tar.gz
+
+useradd --no-create-home --shell /bin/false -u 1101 beacon-chain
+mkdir -p $DATADIR/beacondata
+
+echo ${jwtsecret} > $DATADIR/jwtsecret
+
+if [[ ! -f "$DATADIR/genesis.ssz" ]]; then
+  wget https://github.com/eth-clients/eth2-networks/raw/master/shared/prater/genesis.ssz \
+    -P $DATADIR
+fi
+
+chown -R beacon-chain:beacon-chain $DATADIR
+
+aws s3 cp s3://${s3_artifacts}/$PRYSM_ARTIFACT .
+tar -zxvf $PRYSM_ARTIFACT
+mv beacon-chain /usr/local/bin
+
+cat << EOF > /etc/systemd/system/beacon-chain.service
+[Unit]
+Description=Flashbots Beacon Chain - Prysm (Goerli)
+After=network.target
+Wants=network.target
+
+[Service]
+User=beacon-chain
+Group=beacon-chain
+Type=simple
+Restart=always
+RestartSec=5
+TimeoutStopSec=180
+ExecStart=/usr/local/bin/beacon-chain \\
+    --datadir=$DATADIR/beacondata \\
+    --accept-terms-of-use \\
+    --execution-endpoint=http://localhost:8551 \\
+    --prater \\
+    --genesis-state=$DATADIR/genesis.ssz \\
+    --jwt-secret=$DATADIR/jwtsecret \\
+    --log-format=json
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable beacon-chain
+systemctl start beacon-chain
