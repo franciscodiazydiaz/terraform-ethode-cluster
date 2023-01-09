@@ -17,7 +17,7 @@ cd prysm
 git checkout $PRYSM_VERSION
 
 GO_VERSION=$(grep ^go go.mod | tr -d "go ")
-goenv install $GO_VERSION
+goenv install -s $GO_VERSION
 goenv local $(goenv versions | grep $GO_VERSION)
 go install github.com/bazelbuild/bazelisk@latest
 

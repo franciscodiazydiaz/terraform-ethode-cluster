@@ -1,6 +1,7 @@
 # terraform-ethnode-cluster
 
-Terraform code to deploy a Flashbots' Ethereum Node Cluster:
+Terraform code to deploy a Flashbots' Ethereum Node Cluster on
+[Goerli testnet](https://github.com/eth-clients/goerli):
 
 * Beacon Chain ([Prysm](https://github.com/flashbots/prysm))
 * Execution Client ([Geth](https://github.com/flashbots/mev-geth))
@@ -35,10 +36,19 @@ terraform apply -var eth_node_jwtsecret=$JWTSECRET
 
 Note: It is not recommended to store the tfstate file locally. You can keep it safely either using a module like [terraform-aws-tfstate-backend](https://github.com/cloudposse/terraform-aws-tfstate-backend) or [Terraform Cloud](https://cloud.hashicorp.com/products/terraform)
 
-
 Once Terraform is executed for the first time:
 
 1. Run [Geth](scripts/build_geth.sh) and [Prysm](scripts/build_prysm.sh) build scripts
 2. Terminate and recreate the EC2 instances
 
 Now, the EC2 instances should be able to fetch the archives from the S3 bucket.
+
+## Terraform Role/User permissions
+
+The following policies must be attached to the IAM Role or User that executes Terraform:
+
+* AmazonEC2FullAccess
+* AmazonSSMReadOnlyAccess
+* IAMFullAccess
+* AmazonVPCFullAccess
+* AmazonS3FullAccess
