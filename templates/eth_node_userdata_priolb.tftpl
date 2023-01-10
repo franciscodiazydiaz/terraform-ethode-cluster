@@ -1,0 +1,40 @@
+#!/bin/bash
+#
+# User Data to install Geth
+#
+set -e
+set -u
+set -o pipefail
+
+ARTIFACT=prio-load-balancer-${priolb_version}-$(uname -m).tar.gz
+
+useradd --no-create-home --shell /bin/false -u 1103 priolb
+
+aws s3 cp s3://${s3_artifacts}/$ARTIFACT .
+tar -zxvf $ARTIFACT
+mv prio-load-balancer /usr/local/bin
+
+
+cat << EOF > /etc/systemd/system/prio-load-balancer.service
+[Unit]
+Description=Flashbots High/Low Prio Load Balancer
+After=network.target
+Wants=network.target
+
+[Service]
+User=priolb
+Group=priolb
+Type=simple
+Restart=always
+RestartSec=5
+TimeoutStopSec=180
+ExecStart=/usr/local/bin/prio-load-balancer \\
+    ${indent(4, join(" \\\\\n", priolb_parameters))}
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable prio-load-balancer
+systemctl start prio-load-balancer
