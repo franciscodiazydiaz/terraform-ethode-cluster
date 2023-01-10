@@ -13,7 +13,7 @@ module "prio_load_balancer" {
   desired_capacity = 1
 
   health_check_type         = "EC2" # "ELB"
-  health_check_grace_period	= 60
+  health_check_grace_period = 60
 
   vpc_zone_identifier = module.vpc.private_subnets
 
@@ -53,8 +53,8 @@ module "prio_load_balancer" {
     }
   }
 
-  security_groups	  = [aws_security_group.prio_load_balancer.id]
-  target_group_arns	= [aws_lb_target_group.priolb_8080.arn]
+  security_groups   = [aws_security_group.prio_load_balancer.id]
+  target_group_arns = [aws_lb_target_group.priolb_8080.arn]
 
   tags = local.tags
 }
@@ -76,8 +76,8 @@ data "cloudinit_config" "prio_load_balancer" {
   part {
     content_type = "text/x-shellscript"
     content = templatefile("templates/userdata_priolb.tftpl", {
-      s3_artifacts    = aws_s3_bucket.artifacts.id
-      priolb_version  = "v0.4.0"
+      s3_artifacts   = aws_s3_bucket.artifacts.id
+      priolb_version = "v0.4.0"
       priolb_parameters = [
         "-http=0.0.0.0:8080",
         "-redis=dev"
@@ -130,8 +130,8 @@ resource "aws_security_group_rule" "prio_load_balancer_ingress_alb" {
 #
 # TODO: The same policies are used for the ETH nodes
 resource "aws_iam_role_policy" "prio_load_balancer_s3_artifacts" {
-  name  = "${local.prio_load_balancer_name}-s3-artifacts"
-  role  = module.prio_load_balancer.iam_role_name
+  name = "${local.prio_load_balancer_name}-s3-artifacts"
+  role = module.prio_load_balancer.iam_role_name
 
   policy = <<EOF
 {
@@ -153,8 +153,8 @@ EOF
 }
 
 resource "aws_iam_role_policy" "prio_load_balancer_cloudwatch_logs" {
-  name  = "${local.prio_load_balancer_name}-cloudwatch-logs"
-  role  = module.prio_load_balancer.iam_role_name
+  name = "${local.prio_load_balancer_name}-cloudwatch-logs"
+  role = module.prio_load_balancer.iam_role_name
 
   policy = <<EOF
 {
