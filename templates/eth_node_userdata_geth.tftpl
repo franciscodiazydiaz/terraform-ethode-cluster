@@ -34,20 +34,7 @@ Restart=always
 RestartSec=5
 TimeoutStopSec=180
 ExecStart=/usr/local/bin/geth \\
-    --goerli \\
-    --http \\
-    --http.api=engine,eth,web3,net,debug \\
-    --http.addr=0.0.0.0 \\
-    --http.vhosts=* \\
-    --authrpc.vhosts=* \\
-    --authrpc.addr=0.0.0.0 \\
-    --authrpc.jwtsecret=$DATADIR/jwtsecret \\
-    --datadir=$DATADIR \\
-    --metrics \\
-    --metrics.addr=0.0.0.0 \\
-    --log.json \\
-    --syncmode=full \\
-    --verbosity=3
+    ${indent(4, join(" \\\\\n", geth_parameters))}
 
 [Install]
 WantedBy=multi-user.target

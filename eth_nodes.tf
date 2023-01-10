@@ -1,5 +1,9 @@
 locals {
-  eth_node_data_device_name = "/dev/sdf" #"/dev/nvme1n1" #"/dev/xvdf"
+  # Changing instance type may affect the data device name mount-point, and
+  # the processor architecture. (/dev/sdf, /dev/nvme1n1, /dev/xvdf)
+  eth_node_instance_type    = "m6g.large" # ARM (Nitro instance) / NVMe
+  eth_node_instance_arch    = endswith(split(".", local.eth_node_instance_type)[0], "g") ? "arm64" : "amd64"
+  eth_node_data_device_name = "/dev/sdf"
 }
 
 module "eth_node_instance" {
@@ -10,11 +14,8 @@ module "eth_node_instance" {
 
   name = "${local.name}-eth-node-${each.key}"
 
-  ami = data.aws_ami.ubuntu.id
-  # Changing instance type may affect the data device name mount-point, and
-  # the processor architecture.
-  #instance_type          = "m6g.large" # ARM (Nitro instance) / NVMe
-  instance_type = "c5.large"
+  ami           = data.aws_ami.ubuntu.id
+  instance_type = local.eth_node_instance_type
 
   availability_zone      = each.value
   key_name               = var.eth_node_ec2_key_name
@@ -42,7 +43,6 @@ module "eth_node_instance" {
 #
 # User Data
 #
-
 data "cloudinit_config" "eth_node_userdata" {
   gzip          = false
   base64_encode = false
@@ -68,8 +68,24 @@ data "cloudinit_config" "eth_node_userdata" {
     content = templatefile("templates/eth_node_userdata_geth.tftpl", {
       data_mount_path = "/data"
       s3_artifacts    = aws_s3_bucket.artifacts.id
-      geth_version    = "v1.10.23-mev0.7.0"
       jwtsecret       = var.eth_node_jwtsecret
+      geth_version    = "v1.10.23-mev0.7.0"
+      geth_parameters = [
+        "--goerli",
+        "--http",
+        "--http.api=engine,eth,web3,net,debug",
+        "--http.addr=0.0.0.0",
+        "--http.vhosts=*",
+        "--authrpc.vhosts=*",
+        "--authrpc.addr=0.0.0.0",
+        "--authrpc.jwtsecret=$DATADIR/jwtsecret",
+        "--datadir=$DATADIR",
+        "--metrics",
+        "--metrics.addr=0.0.0.0",
+        "--log.json",
+        "--syncmode=full",
+        "--verbosity=3",
+      ]
     })
   }
 
@@ -79,8 +95,20 @@ data "cloudinit_config" "eth_node_userdata" {
     content = templatefile("templates/eth_node_userdata_prysm.tftpl", {
       data_mount_path = "/data"
       s3_artifacts    = aws_s3_bucket.artifacts.id
-      prysm_version   = "develop-boost"
       jwtsecret       = var.eth_node_jwtsecret
+      prysm_version   = "develop-boost"
+      prysm_parameters = [
+        "--prater",
+        "--accept-terms-of-use",
+        "--datadir=$DATADIR/beacondata",
+        "--execution-endpoint=http://localhost:8551",
+        "--genesis-state=$DATADIR/genesis.ssz",
+        "--jwt-secret=$DATADIR/jwtsecret",
+        "--log-format=json",
+        "--monitoring-host=0.0.0.0",
+        "--checkpoint-sync-url=https://goerli.beaconstate.ethstaker.cc",
+        "--genesis-beacon-api-url=https://goerli.beaconstate.ethstaker.cc",
+      ]
     })
   }
 
@@ -101,7 +129,7 @@ data "aws_ami" "ubuntu" {
 
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-${local.eth_node_instance_arch}-server-*"]
   }
 
   filter {

@@ -39,14 +39,7 @@ Restart=always
 RestartSec=5
 TimeoutStopSec=180
 ExecStart=/usr/local/bin/beacon-chain \\
-    --datadir=$DATADIR/beacondata \\
-    --accept-terms-of-use \\
-    --execution-endpoint=http://localhost:8551 \\
-    --prater \\
-    --genesis-state=$DATADIR/genesis.ssz \\
-    --jwt-secret=$DATADIR/jwtsecret \\
-    --log-format=json \\
-    --monitoring-host=0.0.0.0
+    ${indent(4, join(" \\\\\n", prysm_parameters))}
 
 [Install]
 WantedBy=multi-user.target
