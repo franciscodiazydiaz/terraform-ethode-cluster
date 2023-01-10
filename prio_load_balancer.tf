@@ -69,13 +69,13 @@ data "cloudinit_config" "prio_load_balancer" {
   # AWS cli
   part {
     content_type = "text/x-shellscript"
-    content      = file("templates/eth_node_userdata_awscli.tftpl")
+    content      = file("templates/userdata_awscli.tftpl")
   }
 
   # prio-load-balancer
   part {
     content_type = "text/x-shellscript"
-    content = templatefile("templates/eth_node_userdata_priolb.tftpl", {
+    content = templatefile("templates/userdata_priolb.tftpl", {
       s3_artifacts    = aws_s3_bucket.artifacts.id
       priolb_version  = "v0.4.0"
       priolb_parameters = [
@@ -88,7 +88,7 @@ data "cloudinit_config" "prio_load_balancer" {
   # Fluent-bit
   part {
     content_type = "text/x-shellscript"
-    content = templatefile("templates/eth_node_userdata_fluentbit.tftpl", {
+    content = templatefile("templates/userdata_fluentbit.tftpl", {
       aws_region = local.region
     })
   }

@@ -50,7 +50,7 @@ data "cloudinit_config" "eth_node_instance" {
   # EBS data volume
   part {
     content_type = "text/x-shellscript"
-    content = templatefile("templates/eth_node_userdata_ebs.tftpl", {
+    content = templatefile("templates/userdata_ebs.tftpl", {
       data_device_name = local.eth_node_data_device_name,
       data_mount_path  = "/data"
     })
@@ -59,13 +59,13 @@ data "cloudinit_config" "eth_node_instance" {
   # AWS cli
   part {
     content_type = "text/x-shellscript"
-    content      = file("templates/eth_node_userdata_awscli.tftpl")
+    content      = file("templates/userdata_awscli.tftpl")
   }
 
   # Geth
   part {
     content_type = "text/x-shellscript"
-    content = templatefile("templates/eth_node_userdata_geth.tftpl", {
+    content = templatefile("templates/userdata_geth.tftpl", {
       data_mount_path = "/data"
       s3_artifacts    = aws_s3_bucket.artifacts.id
       jwtsecret       = var.eth_node_jwtsecret
@@ -92,7 +92,7 @@ data "cloudinit_config" "eth_node_instance" {
   # Prysm
   part {
     content_type = "text/x-shellscript"
-    content = templatefile("templates/eth_node_userdata_prysm.tftpl", {
+    content = templatefile("templates/userdata_prysm.tftpl", {
       data_mount_path = "/data"
       s3_artifacts    = aws_s3_bucket.artifacts.id
       jwtsecret       = var.eth_node_jwtsecret
@@ -115,7 +115,7 @@ data "cloudinit_config" "eth_node_instance" {
   # Fluent-bit
   part {
     content_type = "text/x-shellscript"
-    content = templatefile("templates/eth_node_userdata_fluentbit.tftpl", {
+    content = templatefile("templates/userdata_fluentbit.tftpl", {
       aws_region = local.region
     })
   }
