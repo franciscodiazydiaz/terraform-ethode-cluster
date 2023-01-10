@@ -22,7 +22,7 @@ module "eth_node_instance" {
   monitoring             = true
   vpc_security_group_ids = [aws_security_group.eth_node.id]
   subnet_id              = module.vpc.private_subnets[each.key]
-  user_data              = data.cloudinit_config.eth_node_userdata.rendered
+  user_data              = data.cloudinit_config.eth_node_instance.rendered
 
   root_block_device = [{
     volume_size = 20
@@ -43,7 +43,7 @@ module "eth_node_instance" {
 #
 # User Data
 #
-data "cloudinit_config" "eth_node_userdata" {
+data "cloudinit_config" "eth_node_instance" {
   gzip          = false
   base64_encode = false
 
@@ -234,6 +234,16 @@ resource "aws_security_group_rule" "eth_node_ingress_prysm_udp_p2p" {
   to_port           = 12000
   protocol          = "udp"
   cidr_blocks       = ["0.0.0.0/0"]
+}
+
+resource "aws_security_group_rule" "eth_node_ingress_priolb" {
+  security_group_id        = aws_security_group.eth_node.id
+  description              = "Allow access to Geth from the prio-load-balancer"
+  type                     = "ingress"
+  from_port                = 8545
+  to_port                  = 8545
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.prio_load_balancer.id
 }
 
 #

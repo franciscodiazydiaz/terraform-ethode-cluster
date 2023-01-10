@@ -10,6 +10,9 @@ resource "aws_lb" "alb" {
   tags = local.tags
 }
 
+#
+# Geth
+#
 resource "aws_lb_listener" "geth_8545" {
   load_balancer_arn = aws_lb.alb.arn
   port              = 8545
@@ -19,11 +22,10 @@ resource "aws_lb_listener" "geth_8545" {
     type             = "forward"
     target_group_arn = aws_lb_target_group.geth_8545.arn
   }
-
 }
 
 resource "aws_lb_target_group" "geth_8545" {
-  name        = local.name
+  name        = "${local.name}-geth"
   target_type = "instance"
   port        = 8545
   protocol    = "HTTP"
@@ -43,6 +45,36 @@ resource "aws_lb_target_group_attachment" "geth_8545" {
   target_group_arn = aws_lb_target_group.geth_8545.arn
   target_id        = module.eth_node_instance[count.index].id
   port             = 8545
+}
+
+#
+# Prio Load Balancer
+#
+resource "aws_lb_listener" "priolb_8080" {
+  load_balancer_arn = aws_lb.alb.arn
+  port              = 8080
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.priolb_8080.arn
+  }
+}
+
+resource "aws_lb_target_group" "priolb_8080" {
+  name        = local.prio_load_balancer_name
+  target_type = "instance"
+  port        = 8080
+  protocol    = "HTTP"
+  vpc_id      = module.vpc.vpc_id
+  health_check {
+    #      healthy_threshold   = var.health_check["healthy_threshold"]
+    #      interval            = var.health_check["interval"]
+    #      unhealthy_threshold = var.health_check["unhealthy_threshold"]
+    #      timeout             = var.health_check["timeout"]
+    path = "/"
+    port = 8080
+  }
 }
 
 #
