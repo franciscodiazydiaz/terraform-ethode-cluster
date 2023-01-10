@@ -21,6 +21,7 @@ cat << EOF > /etc/fluent-bit/fluent-bit.conf
     Tag             host.*
     Systemd_Filter  _SYSTEMD_UNIT=geth.service
     Systemd_Filter  _SYSTEMD_UNIT=beacon-chain.service
+    Systemd_Filter  _SYSTEMD_UNIT=prio-load-balancer.service
 
 [FILTER]
     Name aws
