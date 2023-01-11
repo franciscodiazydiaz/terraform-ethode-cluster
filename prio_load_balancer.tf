@@ -80,7 +80,7 @@ data "cloudinit_config" "prio_load_balancer" {
       priolb_version = "v0.4.0"
       priolb_parameters = [
         "-http=0.0.0.0:8080",
-        "-redis=dev"
+        "-redis=dev",
       ]
     })
   }
@@ -171,3 +171,81 @@ resource "aws_iam_role_policy" "prio_load_balancer_cloudwatch_logs" {
 }
 EOF
 }
+
+#
+# Lambda to manage "Execution Nodes" in the Prio Load Balancer
+#
+module "lambda_function_in_vpc" {
+  source = "terraform-aws-modules/lambda/aws"
+
+  function_name = "${local.name}-manage-priolb-nodes"
+  description   = "Manage Prio Load Balancer Execution Nodes"
+  handler       = "main.lambda_handler"
+  runtime       = "python3.9"
+  timeout	      = 120
+
+  source_path = "lambda/manage-priolb-nodes"
+
+  vpc_subnet_ids         = module.vpc.private_subnets
+  vpc_security_group_ids = [aws_security_group.prio_load_balancer_lambda.id]
+  attach_network_policy  = true
+
+  create_role = true
+
+  attach_policy_statements = true
+  policy_statements = {
+    ec2_describe = {
+      effect    = "Allow",
+      actions   = ["ec2:DescribeInstances"],
+      resources = ["*"]
+    }
+  }
+
+  environment_variables = {
+    PRIOLB_ENDPOINT = "http://${aws_lb.alb.dns_name}:8080/nodes"
+  }
+
+}
+
+resource "aws_security_group" "prio_load_balancer_lambda" {
+  name        = "${local.prio_load_balancer_name}-lambda"
+  description = "SG for the Prio Load Balancer Lambda"
+  vpc_id      = module.vpc.vpc_id
+
+  tags = local.tags
+}
+
+resource "aws_security_group_rule" "prio_load_balancer_ingress_lambda" {
+  security_group_id        = aws_security_group.alb.id
+  description              = "Allow ingress traffic from the Lambda function"
+  type                     = "ingress"
+  from_port                = 8080
+  to_port                  = 8080
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.prio_load_balancer_lambda.id
+}
+
+resource "aws_security_group_rule" "prio_load_balancer_lambda_egress_tcp_wildcard" {
+  security_group_id = aws_security_group.prio_load_balancer_lambda.id
+  description       = "Allow egress all TCP traffic"
+  type              = "egress"
+  from_port         = 0
+  to_port           = 65535
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+}
+
+#
+# EventBridge
+#
+
+# rule_name = "ec2"
+#event_pattern
+#{
+#  "source": ["aws.ec2"],
+#  "detail-type": ["EC2 Instance State-change Notification"],
+#  "detail": {
+#    "state": ["running", "shutting-down", "stopping"],
+#    "instance-id": ["id-ii"]
+#  }
+#}
