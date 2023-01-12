@@ -55,6 +55,7 @@ The following policies must be attached to the IAM Role or User that executes Te
 * CloudWatchLogsFullAccess
 * AmazonVPCFullAccess
 * AmazonS3FullAccess
+* AmazonEventBridgeFullAccess
 * AWSLambda_FullAccess
 
 ## EC2 instance session and logs
