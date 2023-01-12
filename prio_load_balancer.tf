@@ -117,7 +117,7 @@ resource "aws_security_group_rule" "prio_load_balancer_egress_tcp_wildcard" {
 
 resource "aws_security_group_rule" "prio_load_balancer_ingress_alb" {
   security_group_id        = aws_security_group.prio_load_balancer.id
-  description              = "Allow access to Geth from the ALB"
+  description              = "Allow access to priolb from the ALB"
   type                     = "ingress"
   from_port                = 8080
   to_port                  = 8080
@@ -182,7 +182,7 @@ module "lambda_function_in_vpc" {
   description   = "Manage Prio Load Balancer Execution Nodes"
   handler       = "main.lambda_handler"
   runtime       = "python3.9"
-  timeout	      = 120
+  timeout       = 300
 
   source_path = "lambda/manage-priolb-nodes"
 
@@ -201,6 +201,15 @@ module "lambda_function_in_vpc" {
     }
   }
 
+  # Read FAQ: https://github.com/terraform-aws-modules/terraform-aws-lambda
+  create_current_version_allowed_triggers = false
+  allowed_triggers = {
+    EventBridge = {
+      principal  = "events.amazonaws.com"
+      source_arn = module.eventbridge.eventbridge_rule_arns["ec2_state_change"]
+    }
+  }
+
   environment_variables = {
     PRIOLB_ENDPOINT = "http://${aws_lb.alb.dns_name}:8080/nodes"
   }
@@ -215,14 +224,16 @@ resource "aws_security_group" "prio_load_balancer_lambda" {
   tags = local.tags
 }
 
-resource "aws_security_group_rule" "prio_load_balancer_ingress_lambda" {
-  security_group_id        = aws_security_group.alb.id
-  description              = "Allow ingress traffic from the Lambda function"
-  type                     = "ingress"
-  from_port                = 8080
-  to_port                  = 8080
-  protocol                 = "tcp"
-  source_security_group_id = aws_security_group.prio_load_balancer_lambda.id
+# FIXME: The lambda functions needs to reach the priolb, and they are all behind the ALB
+#        The `source_security_group` cannot be used as the ALB is public
+resource "aws_security_group_rule" "alb_ingress_8080_anywhere" {
+  security_group_id = aws_security_group.alb.id
+  description       = "Allow ingress traffic to ALB 8080 from anywhere"
+  type              = "ingress"
+  from_port         = 8080
+  to_port           = 8080
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
 }
 
 resource "aws_security_group_rule" "prio_load_balancer_lambda_egress_tcp_wildcard" {
@@ -235,17 +246,52 @@ resource "aws_security_group_rule" "prio_load_balancer_lambda_egress_tcp_wildcar
   cidr_blocks       = ["0.0.0.0/0"]
 }
 
+resource "aws_security_group_rule" "eth_node_ingress_priolb_lambda" {
+  security_group_id        = aws_security_group.eth_node.id
+  description              = "Allow ingress traffic to Geth from the priolb Lambda function"
+  type                     = "ingress"
+  from_port                = 8545
+  to_port                  = 8545
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.prio_load_balancer_lambda.id
+}
+
 #
 # EventBridge
 #
+module "eventbridge" {
+  source = "terraform-aws-modules/eventbridge/aws"
 
-# rule_name = "ec2"
-#event_pattern
-#{
-#  "source": ["aws.ec2"],
-#  "detail-type": ["EC2 Instance State-change Notification"],
-#  "detail": {
-#    "state": ["running", "shutting-down", "stopping"],
-#    "instance-id": ["id-ii"]
-#  }
-#}
+  # Looks like some targets are only working with the default bus
+  # bus_name = "${local.name}-priolb"
+  create_bus = false
+
+  create_permissions   = true
+  attach_lambda_policy = true
+  lambda_target_arns   = [module.lambda_function_in_vpc.lambda_function_arn]
+
+  rules = {
+    ec2_state_change = {
+      enabled     = true
+      description = "EC2 Instance State-change Notification"
+      event_pattern = jsonencode({
+        "source" : ["aws.ec2"],
+        "detail-type" : ["EC2 Instance State-change Notification"],
+        "detail" : {
+          "state" : ["running", "shutting-down", "stopping"],
+          "instance-id" : [for instance in module.eth_node_instance : instance.id]
+        }
+      })
+    }
+  }
+
+  targets = {
+    ec2_state_change = [{
+      name = "Manage Prio Load Balancer Nodes"
+      arn  = module.lambda_function_in_vpc.lambda_function_arn
+    }]
+  }
+
+  tags = local.tags
+}
+
