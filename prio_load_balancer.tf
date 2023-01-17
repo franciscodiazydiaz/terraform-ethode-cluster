@@ -80,7 +80,7 @@ data "cloudinit_config" "prio_load_balancer" {
       priolb_version = "v0.4.0"
       priolb_parameters = [
         "-http=0.0.0.0:8080",
-        "-redis=dev",
+        "-redis=${module.redis.endpoint}:${module.redis.port}",
       ]
     })
   }
