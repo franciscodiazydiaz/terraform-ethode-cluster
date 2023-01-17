@@ -38,3 +38,9 @@ variable "eth_node_jwtsecret" {
   type        = string
   sensitive   = true
 }
+
+variable "add_public_ip_alb" {
+  description = "Whether to add a Security Group rule to the internet-facing ALB with the current public IP address"
+  type        = bool
+  default     = false
+}

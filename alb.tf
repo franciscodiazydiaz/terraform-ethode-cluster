@@ -97,3 +97,32 @@ resource "aws_security_group_rule" "alb_egress_wildcard" {
   protocol          = "tcp"
   cidr_blocks       = ["0.0.0.0/0"]
 }
+
+data "http" "current_public_ip" {
+  url = "https://ifconfig.co/ip"
+  request_headers = {
+    Accept = "application/json"
+  }
+}
+
+resource "aws_security_group_rule" "alb_ingress_8080_current_public_ip" {
+  count             = var.add_public_ip_alb ? 1 : 0
+  security_group_id = aws_security_group.alb.id
+  description       = "Allow ingress to 8080 from the current public ip"
+  type              = "ingress"
+  from_port         = 8080
+  to_port           = 8080
+  protocol          = "tcp"
+  cidr_blocks       = ["${chomp(data.http.current_public_ip.response_body)}/32"]
+}
+
+resource "aws_security_group_rule" "alb_ingress_8545_current_public_ip" {
+  count             = var.add_public_ip_alb ? 1 : 0
+  security_group_id = aws_security_group.alb.id
+  description       = "Allow ingress to 8545 from the current public ip"
+  type              = "ingress"
+  from_port         = 8545
+  to_port           = 8545
+  protocol          = "tcp"
+  cidr_blocks       = ["${chomp(data.http.current_public_ip.response_body)}/32"]
+}
