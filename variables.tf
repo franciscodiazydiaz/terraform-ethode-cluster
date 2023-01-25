@@ -44,3 +44,9 @@ variable "add_public_ip_alb" {
   type        = bool
   default     = false
 }
+
+variable "enable_redis" {
+  description = "Whether to provision ElastiCache Redis or not. If not, Prio-Load-Balancer will use its own Redis dev instance"
+  type        = bool
+  default     = false
+}
